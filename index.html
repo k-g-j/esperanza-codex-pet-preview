@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Preview every animation included with the Esperanza Codex pet."
+    />
+    <meta name="color-scheme" content="dark light" />
+    <title>Esperanza animation preview</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="intro">
+        <p class="eyebrow">Codex pet</p>
+        <h1>Esperanza</h1>
+        <p class="subtitle">Choose an animation to preview her latest sprites.</p>
+      </header>
+
+      <section class="preview" aria-labelledby="current-animation">
+        <div class="stage">
+          <canvas
+            id="esperanza"
+            width="192"
+            height="208"
+            role="img"
+            aria-label="Esperanza performing the Idle animation"
+          ></canvas>
+        </div>
+
+        <div class="current">
+          <h2 id="current-animation">Idle</h2>
+          <p id="animation-detail" aria-live="polite">
+            Slow blink, ear flick, and tail-tip twitch
+          </p>
+        </div>
+      </section>
+
+      <div class="controls" aria-label="Esperanza animation controls">
+        <button type="button" data-animation="idle" aria-pressed="true">Idle</button>
+        <button type="button" data-animation="hello" aria-pressed="false">Hello</button>
+        <button type="button" data-animation="chase" aria-pressed="false">Chase</button>
+        <button type="button" data-animation="jump" aria-pressed="false">Jump</button>
+        <button type="button" data-animation="needs-input" aria-pressed="false">
+          Needs input
+        </button>
+        <button type="button" data-animation="think" aria-pressed="false">Think</button>
+        <button type="button" data-animation="ready" aria-pressed="false">Ready</button>
+        <button type="button" data-animation="blocked" aria-pressed="false">Blocked</button>
+        <button type="button" data-animation="look-around" aria-pressed="false">
+          Look around
+        </button>
+      </div>
+
+      <div class="playback">
+        <button type="button" id="play-all" class="primary">Play all</button>
+        <button type="button" id="pause">Pause</button>
+      </div>
+
+      <p class="source-note">
+        This page reads the spritesheet from the latest deployment of
+        <a href="https://github.com/k-g-j/esperanza-codex-pet">Esperanza’s private repository</a>.
+      </p>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
