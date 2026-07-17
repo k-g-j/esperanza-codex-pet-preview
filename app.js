@@ -4,6 +4,9 @@ const title = document.getElementById("current-animation");
 const detail = document.getElementById("animation-detail");
 const pauseButton = document.getElementById("pause");
 const playAllButton = document.getElementById("play-all");
+const previousFrameButton = document.getElementById("previous-frame");
+const nextFrameButton = document.getElementById("next-frame");
+const frameStatus = document.getElementById("frame-status");
 const animationButtons = [...document.querySelectorAll("[data-animation]")];
 const buildVersion = new URL(import.meta.url).searchParams.get("v") || "local";
 
@@ -35,7 +38,7 @@ const animations = {
   jump: {
     label: "Jump",
     detail: "Crouch, leap, land, and settle",
-    delay: 230,
+    delay: 210,
     frames: FRAME_SEQUENCE(4, 5),
   },
   "needs-input": {
@@ -46,26 +49,26 @@ const animations = {
   },
   think: {
     label: "Think",
-    detail: "A full-size facepaw pondering loop",
-    delay: 300,
+    detail: "Focused eye scan and a quiet thinking paw",
+    delay: 280,
     frames: FRAME_SEQUENCE(7, 6),
   },
   ready: {
     label: "Ready",
-    detail: "Happy paw wave, blink, and tail curl",
-    delay: 340,
+    detail: "Attentive blink, head tilt, and ready paw",
+    delay: 300,
     frames: FRAME_SEQUENCE(8, 6),
   },
   blocked: {
     label: "Blocked",
-    detail: "Facepaw, flop, and curled rest",
-    delay: 300,
+    detail: "A gentle facepaw followed by recovery",
+    delay: 280,
     frames: FRAME_SEQUENCE(5, 8),
   },
   "look-around": {
     label: "Look around",
-    detail: "A gentle left-and-right seated scan",
-    delay: 260,
+    detail: "A smooth seated scan through all directions",
+    delay: 220,
     frames: [...FRAME_SEQUENCE(9, 8), ...FRAME_SEQUENCE(10, 8)],
   },
 };
@@ -88,7 +91,7 @@ let frameIndex = 0;
 let frameTimer;
 let tourTimer;
 let tourIndex = 0;
-let playing = true;
+let playing = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 function drawFrame() {
   if (!atlas.complete || atlas.naturalWidth === 0) return;
@@ -111,6 +114,7 @@ function drawFrame() {
     "aria-label",
     `Esperanza performing the ${animation.label} animation`,
   );
+  frameStatus.textContent = `Frame ${frameIndex + 1} of ${animation.frames.length}`;
 }
 
 function clearTimers() {
@@ -152,6 +156,18 @@ function selectAnimation(key, { preserveTour = false } = {}) {
   scheduleFrames();
 }
 
+function stepFrame(delta) {
+  clearTimers();
+  playing = false;
+  pauseButton.textContent = "Play";
+  pauseButton.setAttribute("aria-pressed", "true");
+
+  const animation = animations[currentKey];
+  frameIndex =
+    (frameIndex + delta + animation.frames.length) % animation.frames.length;
+  drawFrame();
+}
+
 function playTourStep() {
   const key = tour[tourIndex % tour.length];
   selectAnimation(key, { preserveTour: true });
@@ -176,6 +192,9 @@ pauseButton.addEventListener("click", () => {
   else window.clearTimeout(frameTimer);
 });
 
+previousFrameButton.addEventListener("click", () => stepFrame(-1));
+nextFrameButton.addEventListener("click", () => stepFrame(1));
+
 playAllButton.addEventListener("click", () => {
   clearTimers();
   tourIndex = 0;
@@ -184,13 +203,40 @@ playAllButton.addEventListener("click", () => {
 
 atlas.addEventListener("load", () => {
   drawFrame();
-  scheduleFrames();
+  pauseButton.textContent = playing ? "Pause" : "Play";
+  pauseButton.setAttribute("aria-pressed", String(!playing));
+  if (playing) scheduleFrames();
 });
 atlas.addEventListener("error", () => {
   title.textContent = "Preview unavailable";
   detail.textContent = "The spritesheet could not be loaded.";
 });
 atlas.src = `assets/esperanza.webp?v=${encodeURIComponent(buildVersion)}`;
+
+document.addEventListener("visibilitychange", () => {
+  window.clearTimeout(frameTimer);
+  if (!document.hidden && playing) scheduleFrames();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (
+    event.target instanceof HTMLButtonElement ||
+    event.target instanceof HTMLAnchorElement
+  ) {
+    return;
+  }
+
+  if (event.key === "ArrowLeft") {
+    event.preventDefault();
+    stepFrame(-1);
+  } else if (event.key === "ArrowRight") {
+    event.preventDefault();
+    stepFrame(1);
+  } else if (event.key === " ") {
+    event.preventDefault();
+    pauseButton.click();
+  }
+});
 
 async function refreshIfUpdated() {
   if (buildVersion === "local") return;

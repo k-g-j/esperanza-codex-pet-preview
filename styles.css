@@ -65,7 +65,8 @@ h1 {
 
 .subtitle,
 #animation-detail,
-.source-note {
+.source-note,
+.keyboard-note {
   color: #b9b7c3;
 }
 
@@ -133,6 +134,15 @@ canvas {
   line-height: 1.55;
 }
 
+.current .frame-status {
+  margin-top: 14px;
+  color: #d9ab72;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .controls,
 .playback {
   display: flex;
@@ -190,6 +200,12 @@ button.primary {
   margin: 28px auto 0;
   font-size: 0.82rem;
   line-height: 1.5;
+  text-align: center;
+}
+
+.keyboard-note {
+  margin: 12px auto 0;
+  font-size: 0.75rem;
   text-align: center;
 }
 
@@ -251,7 +267,8 @@ a {
 
   .subtitle,
   #animation-detail,
-  .source-note {
+  .source-note,
+  .keyboard-note {
     color: #68615b;
   }
 

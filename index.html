@@ -38,6 +38,7 @@
           <p id="animation-detail" aria-live="polite">
             Slow blink, ear flick, and tail-tip twitch
           </p>
+          <p id="frame-status" class="frame-status" aria-live="polite">Frame 1 of 6</p>
         </div>
       </section>
 
@@ -59,8 +60,16 @@
 
       <div class="playback">
         <button type="button" id="play-all" class="primary">Play all</button>
-        <button type="button" id="pause">Pause</button>
+        <button type="button" id="previous-frame" aria-keyshortcuts="ArrowLeft">
+          Previous frame
+        </button>
+        <button type="button" id="pause" aria-keyshortcuts="Space">Pause</button>
+        <button type="button" id="next-frame" aria-keyshortcuts="ArrowRight">
+          Next frame
+        </button>
       </div>
+
+      <p class="keyboard-note">Keyboard: ←/→ steps frames · Space pauses or plays</p>
 
       <p class="source-note">
         This page reads the spritesheet from the latest deployment of
@@ -71,7 +80,7 @@
     <script type="module">
       const fallbackManifest = {
         revision: String(Date.now()),
-        artworkVersionNumber: 3,
+        artworkVersionNumber: 4,
         spriteSchemaVersionNumber: 2,
       };
       let manifest = fallbackManifest;
