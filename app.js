@@ -44,13 +44,13 @@ const animations = {
   },
   think: {
     label: "Think",
-    detail: "Stalk, track, and compact pounce",
-    delay: 260,
+    detail: "A full-size facepaw pondering loop",
+    delay: 300,
     frames: FRAME_SEQUENCE(7, 6),
   },
   ready: {
     label: "Ready",
-    detail: "Happy blink, paw settle, and tail curl",
+    detail: "Happy paw wave, blink, and tail curl",
     delay: 340,
     frames: FRAME_SEQUENCE(8, 6),
   },
@@ -62,8 +62,8 @@ const animations = {
   },
   "look-around": {
     label: "Look around",
-    detail: "All sixteen gaze directions",
-    delay: 180,
+    detail: "A gentle left-and-right seated scan",
+    delay: 260,
     frames: [...FRAME_SEQUENCE(9, 8), ...FRAME_SEQUENCE(10, 8)],
   },
 };
