@@ -11,7 +11,7 @@
     <title>Esperanza animation preview</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <link rel="alternate icon" href="favicon.ico" />
-    <link rel="stylesheet" href="styles.css" />
+    <link id="preview-styles" rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <main class="shell">
@@ -19,6 +19,7 @@
         <p class="eyebrow">Codex pet</p>
         <h1>Esperanza</h1>
         <p class="subtitle">Choose an animation to preview her latest sprites.</p>
+        <p id="sprite-version" class="version" aria-live="polite">Checking latest sprite</p>
       </header>
 
       <section class="preview" aria-labelledby="current-animation">
@@ -67,6 +68,36 @@
       </p>
     </main>
 
-    <script src="app.js"></script>
+    <script type="module">
+      const fallbackManifest = {
+        revision: String(Date.now()),
+        spriteVersionNumber: 3,
+      };
+      let manifest = fallbackManifest;
+
+      try {
+        const manifestUrl = new URL("version.json", window.location.href);
+        manifestUrl.searchParams.set("t", String(Date.now()));
+        const response = await fetch(manifestUrl, { cache: "no-store" });
+        if (!response.ok) throw new Error(`Version request failed: ${response.status}`);
+        manifest = await response.json();
+      } catch {
+        // The timestamp fallback still bypasses stale assets if the manifest is unavailable.
+      }
+
+      const revision = encodeURIComponent(manifest.revision || fallbackManifest.revision);
+      const stylesheet = document.getElementById("preview-styles");
+      stylesheet.href = `styles.css?v=${revision}`;
+      document.getElementById("sprite-version").textContent =
+        `Sprite v${manifest.spriteVersionNumber || fallbackManifest.spriteVersionNumber}`;
+
+      try {
+        await import(`./app.js?v=${revision}`);
+      } catch {
+        document.getElementById("current-animation").textContent = "Preview unavailable";
+        document.getElementById("animation-detail").textContent =
+          "The latest animation code could not be loaded.";
+      }
+    </script>
   </body>
 </html>

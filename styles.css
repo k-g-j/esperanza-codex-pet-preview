@@ -70,8 +70,21 @@ h1 {
 }
 
 .subtitle {
-  margin-bottom: 32px;
+  margin-bottom: 10px;
   font-size: 1rem;
+}
+
+.version {
+  display: inline-flex;
+  margin-bottom: 28px;
+  padding: 5px 10px;
+  border: 1px solid #4b443c;
+  border-radius: 999px;
+  color: #d9ab72;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .preview {
@@ -228,6 +241,11 @@ a {
   }
 
   .eyebrow {
+    color: #80501f;
+  }
+
+  .version {
+    border-color: #d8c7b5;
     color: #80501f;
   }
 

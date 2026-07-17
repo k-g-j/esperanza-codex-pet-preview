@@ -5,9 +5,11 @@ const detail = document.getElementById("animation-detail");
 const pauseButton = document.getElementById("pause");
 const playAllButton = document.getElementById("play-all");
 const animationButtons = [...document.querySelectorAll("[data-animation]")];
+const buildVersion = new URL(import.meta.url).searchParams.get("v") || "local";
 
 const CELL_WIDTH = 192;
 const CELL_HEIGHT = 208;
+const UPDATE_INTERVAL_MS = 30_000;
 const FRAME_SEQUENCE = (row, count) =>
   Array.from({ length: count }, (_, column) => ({ row, column }));
 
@@ -188,4 +190,26 @@ atlas.addEventListener("error", () => {
   title.textContent = "Preview unavailable";
   detail.textContent = "The spritesheet could not be loaded.";
 });
-atlas.src = "assets/esperanza.webp";
+atlas.src = `assets/esperanza.webp?v=${encodeURIComponent(buildVersion)}`;
+
+async function refreshIfUpdated() {
+  if (buildVersion === "local") return;
+
+  try {
+    const manifestUrl = new URL("version.json", window.location.href);
+    manifestUrl.searchParams.set("t", String(Date.now()));
+    const response = await fetch(manifestUrl, { cache: "no-store" });
+    if (!response.ok) return;
+
+    const manifest = await response.json();
+    if (!manifest.revision || manifest.revision === buildVersion) return;
+
+    const latestUrl = new URL(window.location.href);
+    latestUrl.searchParams.set("build", manifest.revision.slice(0, 12));
+    window.location.replace(latestUrl);
+  } catch {
+    // Keep the current working preview if an update check fails.
+  }
+}
+
+window.setInterval(refreshIfUpdated, UPDATE_INTERVAL_MS);
