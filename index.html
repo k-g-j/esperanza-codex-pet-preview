@@ -71,7 +71,8 @@
     <script type="module">
       const fallbackManifest = {
         revision: String(Date.now()),
-        spriteVersionNumber: 3,
+        artworkVersionNumber: 3,
+        spriteSchemaVersionNumber: 2,
       };
       let manifest = fallbackManifest;
 
@@ -89,7 +90,7 @@
       const stylesheet = document.getElementById("preview-styles");
       stylesheet.href = `styles.css?v=${revision}`;
       document.getElementById("sprite-version").textContent =
-        `Sprite v${manifest.spriteVersionNumber || fallbackManifest.spriteVersionNumber}`;
+        `Artwork v${manifest.artworkVersionNumber || fallbackManifest.artworkVersionNumber}`;
 
       try {
         await import(`./app.js?v=${revision}`);
