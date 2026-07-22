@@ -1,103 +1,63 @@
 const canvas = document.getElementById("esperanza");
 const context = canvas.getContext("2d");
+const stage = document.querySelector(".stage");
 const title = document.getElementById("current-animation");
 const detail = document.getElementById("animation-detail");
+const codexState = document.getElementById("codex-state");
 const pauseButton = document.getElementById("pause");
 const playAllButton = document.getElementById("play-all");
 const previousFrameButton = document.getElementById("previous-frame");
 const nextFrameButton = document.getElementById("next-frame");
 const frameStatus = document.getElementById("frame-status");
+const petSizeInput = document.getElementById("pet-size");
+const petSizeOutput = document.getElementById("pet-size-output");
+const resetPetSizeButton = document.getElementById("reset-pet-size");
 const animationButtons = [...document.querySelectorAll("[data-animation]")];
 const buildVersion = new URL(import.meta.url).searchParams.get("v") || "local";
+const reducedMotionQuery = window.matchMedia(
+  "(prefers-reduced-motion: reduce)",
+);
 
-const CELL_WIDTH = 192;
-const CELL_HEIGHT = 208;
+const previewModel = await import(
+  `./preview-model.js?v=${encodeURIComponent(buildVersion)}`
+);
+const {
+  CELL_HEIGHT,
+  CELL_WIDTH,
+  PET_SIZE_DEFAULT,
+  animations,
+  buildPlayback,
+  clampPetOffset,
+  clampPetSize,
+  getAnimationDuration,
+  getRenderedPetHeight,
+  getRunAnimation,
+  tour,
+} = previewModel;
+
 const UPDATE_INTERVAL_MS = 30_000;
-const FRAME_SEQUENCE = (row, count) =>
-  Array.from({ length: count }, (_, column) => ({ row, column }));
-
-const animations = {
-  idle: {
-    label: "Idle",
-    detail: "Slow blink, ear flick, and tail-tip twitch",
-    delay: 420,
-    frames: FRAME_SEQUENCE(0, 6),
-  },
-  hello: {
-    label: "Hello",
-    detail: "Friendly white-paw wave",
-    delay: 260,
-    frames: FRAME_SEQUENCE(3, 4),
-  },
-  chase: {
-    label: "Chase",
-    detail: "Right and left running loops",
-    delay: 150,
-    frames: [...FRAME_SEQUENCE(1, 8), ...FRAME_SEQUENCE(2, 8)],
-  },
-  jump: {
-    label: "Jump",
-    detail: "Crouch, leap, land, and settle",
-    delay: 210,
-    frames: FRAME_SEQUENCE(4, 5),
-  },
-  "needs-input": {
-    label: "Needs input",
-    detail: "Patient white-paw tap",
-    delay: 320,
-    frames: FRAME_SEQUENCE(6, 6),
-  },
-  think: {
-    label: "Think",
-    detail: "Focused eye scan and a quiet thinking paw",
-    delay: 280,
-    frames: FRAME_SEQUENCE(7, 6),
-  },
-  ready: {
-    label: "Ready",
-    detail: "Attentive blink, head tilt, and ready paw",
-    delay: 300,
-    frames: FRAME_SEQUENCE(8, 6),
-  },
-  blocked: {
-    label: "Blocked",
-    detail: "A gentle facepaw followed by recovery",
-    delay: 280,
-    frames: FRAME_SEQUENCE(5, 8),
-  },
-  "look-around": {
-    label: "Look around",
-    detail: "A smooth seated scan through all directions",
-    delay: 220,
-    frames: [...FRAME_SEQUENCE(9, 8), ...FRAME_SEQUENCE(10, 8)],
-  },
-};
-
-const tour = [
-  "hello",
-  "jump",
-  "needs-input",
-  "think",
-  "ready",
-  "blocked",
-  "look-around",
-  "chase",
-  "idle",
-];
 
 const atlas = new Image();
 let currentKey = "idle";
+let selectedKey = "idle";
+let playback = buildPlayback("idle");
 let frameIndex = 0;
 let frameTimer;
 let tourTimer;
 let tourIndex = 0;
-let playing = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+let tourActive = false;
+let prefersReducedMotion = reducedMotionQuery.matches;
+let playing = !prefersReducedMotion;
+let petSize = PET_SIZE_DEFAULT;
+let petOffsetX = 0;
+let dragState = null;
+let interactionResumeState = null;
 
 function drawFrame() {
   if (!atlas.complete || atlas.naturalWidth === 0) return;
 
-  const animation = animations[currentKey];
-  const frame = animation.frames[frameIndex % animation.frames.length];
+  const frame = playback.frames[frameIndex % playback.frames.length];
+  const sourceAnimation = animations[frame.sourceKey];
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.drawImage(
     atlas,
@@ -112,9 +72,12 @@ function drawFrame() {
   );
   canvas.setAttribute(
     "aria-label",
-    `Esperanza performing the ${animation.label} animation`,
+    `Esperanza performing the ${sourceAnimation.label} animation`,
   );
-  frameStatus.textContent = `Frame ${frameIndex + 1} of ${animation.frames.length}`;
+  frameStatus.textContent =
+    frame.sourceKey === currentKey
+      ? `Frame ${frame.sourceFrameIndex + 1} of ${sourceAnimation.frames.length}`
+      : `Idling after three ${animations[currentKey].label.toLowerCase()} cycles`;
 }
 
 function clearTimers() {
@@ -122,71 +85,225 @@ function clearTimers() {
   window.clearTimeout(tourTimer);
 }
 
+function updatePlaybackControl() {
+  pauseButton.textContent = playing ? "Pause" : "Play";
+  pauseButton.setAttribute("aria-pressed", String(!playing));
+}
+
+function updateAnimationCopy(key) {
+  const animation = animations[key];
+  title.textContent = animation.label;
+  detail.textContent = animation.detail;
+  codexState.textContent = `Codex state: ${animation.stateLabel}`;
+}
+
 function scheduleFrames() {
   window.clearTimeout(frameTimer);
   if (!playing) return;
 
+  const frame = playback.frames[frameIndex % playback.frames.length];
   frameTimer = window.setTimeout(() => {
-    const animation = animations[currentKey];
-    frameIndex = (frameIndex + 1) % animation.frames.length;
+    frameIndex += 1;
+    if (frameIndex >= playback.frames.length)
+      frameIndex = playback.loopStartIndex;
     drawFrame();
     scheduleFrames();
-  }, animations[currentKey].delay);
+  }, frame.durationMs);
 }
 
 function updateControls(key) {
   animationButtons.forEach((button) => {
-    button.setAttribute("aria-pressed", String(button.dataset.animation === key));
+    button.setAttribute(
+      "aria-pressed",
+      String(button.dataset.animation === key),
+    );
   });
 }
 
 function selectAnimation(key, { preserveTour = false } = {}) {
-  if (!preserveTour) window.clearTimeout(tourTimer);
+  if (!preserveTour) {
+    window.clearTimeout(tourTimer);
+    tourActive = false;
+  }
+  interactionResumeState = null;
   currentKey = key;
+  selectedKey = key;
+  playback = buildPlayback(key);
   frameIndex = 0;
   playing = true;
-  pauseButton.textContent = "Pause";
-  pauseButton.setAttribute("aria-pressed", "false");
-
-  const animation = animations[key];
-  title.textContent = animation.label;
-  detail.textContent = animation.detail;
-  updateControls(key);
+  updatePlaybackControl();
+  updateAnimationCopy(key);
+  updateControls(selectedKey);
   drawFrame();
   scheduleFrames();
 }
 
+function showInteractionAnimation(key) {
+  window.clearTimeout(tourTimer);
+  if (interactionResumeState == null) {
+    interactionResumeState = {
+      key: currentKey,
+      playing,
+      selectedKey,
+      tourActive,
+    };
+  }
+  tourActive = false;
+
+  if (currentKey === key) return;
+  currentKey = key;
+  playback = buildPlayback(key);
+  frameIndex = 0;
+  playing = !prefersReducedMotion;
+  updatePlaybackControl();
+  updateAnimationCopy(key);
+  updateControls(selectedKey);
+  drawFrame();
+  scheduleFrames();
+}
+
+function restoreSelectedAnimation() {
+  if (interactionResumeState == null) return;
+  const resumeState = interactionResumeState;
+  interactionResumeState = null;
+  currentKey = resumeState.key;
+  selectedKey = resumeState.selectedKey;
+  tourActive = resumeState.tourActive;
+  playback = buildPlayback(currentKey);
+  frameIndex = 0;
+  playing = resumeState.playing;
+  updatePlaybackControl();
+  updateAnimationCopy(currentKey);
+  updateControls(selectedKey);
+  drawFrame();
+  if (playing) scheduleFrames();
+  else window.clearTimeout(frameTimer);
+  if (tourActive) scheduleNextTourStep(currentKey);
+}
+
+function updatePetPosition() {
+  petOffsetX = clampPetOffset(petOffsetX, stage.clientWidth, petSize);
+  canvas.style.transform = `translate3d(${petOffsetX}px, 0, 0)`;
+}
+
+function updatePetSize(value) {
+  petSize = clampPetSize(value);
+  petSizeInput.value = String(petSize);
+  petSizeOutput.value = `${petSize} px`;
+  canvas.style.width = `${petSize}px`;
+  canvas.style.height = `${getRenderedPetHeight(petSize)}px`;
+  updatePetPosition();
+}
+
 function stepFrame(delta) {
   clearTimers();
+  tourActive = false;
   playing = false;
-  pauseButton.textContent = "Play";
-  pauseButton.setAttribute("aria-pressed", "true");
+  updatePlaybackControl();
 
   const animation = animations[currentKey];
+  const sourceFrameIndex = playback.frames[frameIndex]?.sourceFrameIndex ?? 0;
+  playback = {
+    frames: animation.frames.map((frame, index) => ({
+      ...frame,
+      sourceFrameIndex: index,
+      sourceKey: currentKey,
+    })),
+    loopStartIndex: 0,
+  };
   frameIndex =
-    (frameIndex + delta + animation.frames.length) % animation.frames.length;
+    (sourceFrameIndex + delta + animation.frames.length) %
+    animation.frames.length;
   drawFrame();
 }
 
 function playTourStep() {
+  tourActive = true;
   const key = tour[tourIndex % tour.length];
   selectAnimation(key, { preserveTour: true });
   tourIndex += 1;
 
-  const animation = animations[key];
-  const duration = Math.max(animation.frames.length * animation.delay, 1500);
+  scheduleNextTourStep(key);
+}
+
+function scheduleNextTourStep(key) {
+  const cycles = key === "idle" ? 1 : 3;
+  const duration = Math.max(getAnimationDuration(key) * cycles, 1500);
   tourTimer = window.setTimeout(playTourStep, duration);
 }
 
 animationButtons.forEach((button) => {
-  button.addEventListener("click", () => selectAnimation(button.dataset.animation));
+  button.addEventListener("click", () =>
+    selectAnimation(button.dataset.animation),
+  );
 });
+
+petSizeInput.addEventListener("input", () => updatePetSize(petSizeInput.value));
+resetPetSizeButton.addEventListener("click", () =>
+  updatePetSize(PET_SIZE_DEFAULT),
+);
+
+canvas.addEventListener("pointerenter", (event) => {
+  if (event.pointerType === "mouse" && dragState == null) {
+    showInteractionAnimation("jump");
+  }
+});
+
+canvas.addEventListener("pointerleave", () => {
+  if (dragState == null) restoreSelectedAnimation();
+});
+
+canvas.addEventListener("pointerdown", (event) => {
+  if (event.button !== 0) return;
+  event.preventDefault();
+  canvas.setPointerCapture?.(event.pointerId);
+  dragState = {
+    directionX: event.clientX,
+    pointerId: event.pointerId,
+    pointerType: event.pointerType,
+    startOffsetX: petOffsetX,
+    startX: event.clientX,
+  };
+  canvas.classList.add("is-dragging");
+});
+
+canvas.addEventListener("pointermove", (event) => {
+  if (dragState == null || dragState.pointerId !== event.pointerId) return;
+
+  petOffsetX = dragState.startOffsetX + event.clientX - dragState.startX;
+  updatePetPosition();
+
+  const runAnimation = getRunAnimation(event.clientX - dragState.directionX);
+  if (runAnimation != null) {
+    dragState.directionX = event.clientX;
+    showInteractionAnimation(runAnimation);
+  }
+});
+
+function finishDrag(event, canceled = false) {
+  if (dragState == null || dragState.pointerId !== event.pointerId) return;
+  const pointerType = dragState.pointerType;
+  dragState = null;
+  canvas.classList.remove("is-dragging");
+  if (canvas.hasPointerCapture?.(event.pointerId)) {
+    canvas.releasePointerCapture(event.pointerId);
+  }
+
+  if (!canceled && pointerType === "mouse" && canvas.matches(":hover")) {
+    showInteractionAnimation("jump");
+  } else {
+    restoreSelectedAnimation();
+  }
+}
+
+canvas.addEventListener("pointerup", (event) => finishDrag(event));
+canvas.addEventListener("pointercancel", (event) => finishDrag(event, true));
 
 pauseButton.addEventListener("click", () => {
   window.clearTimeout(tourTimer);
+  tourActive = false;
   playing = !playing;
-  pauseButton.textContent = playing ? "Pause" : "Play";
-  pauseButton.setAttribute("aria-pressed", String(!playing));
+  updatePlaybackControl();
 
   if (playing) scheduleFrames();
   else window.clearTimeout(frameTimer);
@@ -197,14 +314,14 @@ nextFrameButton.addEventListener("click", () => stepFrame(1));
 
 playAllButton.addEventListener("click", () => {
   clearTimers();
+  tourActive = true;
   tourIndex = 0;
   playTourStep();
 });
 
 atlas.addEventListener("load", () => {
   drawFrame();
-  pauseButton.textContent = playing ? "Pause" : "Play";
-  pauseButton.setAttribute("aria-pressed", String(!playing));
+  updatePlaybackControl();
   if (playing) scheduleFrames();
 });
 atlas.addEventListener("error", () => {
@@ -218,10 +335,19 @@ document.addEventListener("visibilitychange", () => {
   if (!document.hidden && playing) scheduleFrames();
 });
 
+reducedMotionQuery.addEventListener("change", (event) => {
+  prefersReducedMotion = event.matches;
+  if (!prefersReducedMotion || interactionResumeState == null) return;
+  playing = false;
+  window.clearTimeout(frameTimer);
+  updatePlaybackControl();
+});
+
 document.addEventListener("keydown", (event) => {
   if (
     event.target instanceof HTMLButtonElement ||
-    event.target instanceof HTMLAnchorElement
+    event.target instanceof HTMLAnchorElement ||
+    event.target instanceof HTMLInputElement
   ) {
     return;
   }
@@ -237,6 +363,9 @@ document.addEventListener("keydown", (event) => {
     pauseButton.click();
   }
 });
+
+window.addEventListener("resize", updatePetPosition);
+updatePetSize(PET_SIZE_DEFAULT);
 
 async function refreshIfUpdated() {
   if (buildVersion === "local") return;

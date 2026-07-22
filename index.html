@@ -18,19 +18,29 @@
       <header class="intro">
         <p class="eyebrow">Codex pet</p>
         <h1>Esperanza</h1>
-        <p class="subtitle">Choose an animation to preview her latest sprites.</p>
-        <p id="sprite-version" class="version" aria-live="polite">Checking latest sprite</p>
+        <p class="subtitle">
+          Choose an animation to preview her latest sprites.
+        </p>
+        <p id="sprite-version" class="version" aria-live="polite">
+          Checking latest sprite
+        </p>
       </header>
 
       <section class="preview" aria-labelledby="current-animation">
         <div class="stage">
-          <canvas
-            id="esperanza"
-            width="192"
-            height="208"
-            role="img"
-            aria-label="Esperanza performing the Idle animation"
-          ></canvas>
+          <div class="pet-stage">
+            <canvas
+              id="esperanza"
+              width="192"
+              height="208"
+              role="img"
+              aria-label="Esperanza performing the Idle animation"
+              aria-describedby="interaction-hint"
+            ></canvas>
+            <p id="interaction-hint" class="interaction-hint">
+              Hover to jump. Drag left or right to run.
+            </p>
+          </div>
         </div>
 
         <div class="current">
@@ -38,21 +48,57 @@
           <p id="animation-detail" aria-live="polite">
             Slow blink, ear flick, and tail-tip twitch
           </p>
-          <p id="frame-status" class="frame-status" aria-live="polite">Frame 1 of 6</p>
+          <p id="codex-state" class="codex-state">Codex state: idle</p>
+          <p id="frame-status" class="frame-status">Frame 1 of 6</p>
+        </div>
+      </section>
+
+      <section class="appearance" aria-labelledby="pet-size-label">
+        <div class="appearance-copy">
+          <h2 id="pet-size-label">Pet size</h2>
+          <p>
+            Preview the 80 to 224 px range available in current Codex builds.
+          </p>
+        </div>
+        <div class="size-control">
+          <input
+            id="pet-size"
+            type="range"
+            min="80"
+            max="224"
+            value="112"
+            aria-labelledby="pet-size-label pet-size-output"
+          />
+          <output id="pet-size-output" for="pet-size">112 px</output>
+          <button type="button" id="reset-pet-size">Reset</button>
         </div>
       </section>
 
       <div class="controls" aria-label="Esperanza animation controls">
-        <button type="button" data-animation="idle" aria-pressed="true">Idle</button>
-        <button type="button" data-animation="hello" aria-pressed="false">Hello</button>
-        <button type="button" data-animation="chase" aria-pressed="false">Chase</button>
-        <button type="button" data-animation="jump" aria-pressed="false">Jump</button>
+        <button type="button" data-animation="idle" aria-pressed="true">
+          Idle
+        </button>
+        <button type="button" data-animation="hello" aria-pressed="false">
+          Hello
+        </button>
+        <button type="button" data-animation="chase" aria-pressed="false">
+          Chase
+        </button>
+        <button type="button" data-animation="jump" aria-pressed="false">
+          Jump
+        </button>
         <button type="button" data-animation="needs-input" aria-pressed="false">
           Needs input
         </button>
-        <button type="button" data-animation="think" aria-pressed="false">Think</button>
-        <button type="button" data-animation="ready" aria-pressed="false">Ready</button>
-        <button type="button" data-animation="blocked" aria-pressed="false">Blocked</button>
+        <button type="button" data-animation="working" aria-pressed="false">
+          Working
+        </button>
+        <button type="button" data-animation="review" aria-pressed="false">
+          Review
+        </button>
+        <button type="button" data-animation="blocked" aria-pressed="false">
+          Blocked
+        </button>
         <button type="button" data-animation="look-around" aria-pressed="false">
           Look around
         </button>
@@ -63,17 +109,23 @@
         <button type="button" id="previous-frame" aria-keyshortcuts="ArrowLeft">
           Previous frame
         </button>
-        <button type="button" id="pause" aria-keyshortcuts="Space">Pause</button>
+        <button type="button" id="pause" aria-keyshortcuts="Space">
+          Pause
+        </button>
         <button type="button" id="next-frame" aria-keyshortcuts="ArrowRight">
           Next frame
         </button>
       </div>
 
-      <p class="keyboard-note">Keyboard: ←/→ steps frames · Space pauses or plays</p>
+      <p class="keyboard-note">
+        Keyboard: ←/→ steps frames · Space pauses or plays
+      </p>
 
       <p class="source-note">
         This page reads the spritesheet from the latest deployment of
-        <a href="https://github.com/k-g-j/esperanza-codex-pet">Esperanza’s private repository</a>.
+        <a href="https://github.com/k-g-j/esperanza-codex-pet"
+          >Esperanza’s private repository</a
+        >.
       </p>
     </main>
 
@@ -89,13 +141,16 @@
         const manifestUrl = new URL("version.json", window.location.href);
         manifestUrl.searchParams.set("t", String(Date.now()));
         const response = await fetch(manifestUrl, { cache: "no-store" });
-        if (!response.ok) throw new Error(`Version request failed: ${response.status}`);
+        if (!response.ok)
+          throw new Error(`Version request failed: ${response.status}`);
         manifest = await response.json();
       } catch {
         // The timestamp fallback still bypasses stale assets if the manifest is unavailable.
       }
 
-      const revision = encodeURIComponent(manifest.revision || fallbackManifest.revision);
+      const revision = encodeURIComponent(
+        manifest.revision || fallbackManifest.revision,
+      );
       const stylesheet = document.getElementById("preview-styles");
       stylesheet.href = `styles.css?v=${revision}`;
       document.getElementById("sprite-version").textContent =
@@ -104,7 +159,8 @@
       try {
         await import(`./app.js?v=${revision}`);
       } catch {
-        document.getElementById("current-animation").textContent = "Preview unavailable";
+        document.getElementById("current-animation").textContent =
+          "Preview unavailable";
         document.getElementById("animation-detail").textContent =
           "The latest animation code could not be loaded.";
       }
